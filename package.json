@@ -1,0 +1,31 @@
+{
+  "name": "intigriti-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Intigriti bug bounty platform researcher API",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "intigriti-mcp-server": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"No tests configured yet\" && exit 0"
+  },
+  "keywords": [
+    "mcp",
+    "intigriti",
+    "bug-bounty",
+    "security",
+    "researcher",
+    "api",
+    "model-context-protocol"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

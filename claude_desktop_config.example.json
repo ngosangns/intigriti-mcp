@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "intigriti": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/intigriti-mcp-server/index.js"
+      ],
+      "env": {
+        "INTIGRITI_API_TOKEN": "your_api_token_here"
+      }
+    }
+  }
+}

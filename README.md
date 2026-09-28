@@ -1,6 +1,8 @@
 # Intigriti MCP Server
 
-A Model Context Protocol (MCP) server for interacting with the Intigriti bug bounty platform's Researcher API. This enables AI assistants like Claude to help security researchers manage their bug bounty programs, submissions, and research workflow.
+A Model Context Protocol (MCP) server for interacting with the Intigriti bug bounty platform's Researcher API. This enables AI assistants like Claude to help security researchers browse programs, check scope and rules of engagement, and monitor program changes.
+
+> **Note:** The Intigriti Researcher API only exposes program data (list, details, scope versions, ROE versions, activity feed). It does **not** expose submissions or researcher stats — those are only available on [app.intigriti.com](https://app.intigriti.com).
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-green)
@@ -11,18 +13,13 @@ A Model Context Protocol (MCP) server for interacting with the Intigriti bug bou
 This MCP server provides comprehensive tools for interacting with Intigriti:
 
 ### 📋 Program Management
-- **List Programs** - View all available bug bounty programs
+- **List Programs** - View all available bug bounty programs (filterable by status, type, following)
 - **Get Program Details** - Access detailed program information
-- **View Scope** - See in-scope and out-of-scope assets
+- **View Scope** - See in-scope and out-of-scope assets (latest or a specific version)
+- **View Rules of Engagement** - Policy text, testing requirements, safe-harbour flag
 
-### 🐛 Submission Management
-- **List Submissions** - View your bug submissions with advanced filtering
-- **Get Submission Details** - Access full submission information
-- **Create Submissions** - Submit new bug reports
-- **Add Comments** - Update submissions with additional information
-
-### 📊 Researcher Analytics
-- **Get Stats** - View your performance metrics and earnings
+### 🔄 Change Monitoring
+- **List Program Activities** - Scope/ROE version changes, status changes, new programs — poll with `created_since`
 
 ## 📦 Installation
 
@@ -111,29 +108,12 @@ Once configured with Claude Desktop, you can use natural language to interact wi
 "What's the scope for the XYZ program?"
 ```
 
-### Managing Submissions
+### Monitoring Changes
 
 ```
-"List all my open bug submissions"
-"Show me my accepted bugs from this month"
-"Get details about submission abc-123-def"
-"What's the status of my recent submissions?"
-```
-
-### Submitting Bugs
-
-```
-"I found an XSS vulnerability in the XYZ program. Help me submit it."
-"Create a new submission for [program] about [vulnerability type]"
-"Add a comment to submission [id] with additional reproduction steps"
-```
-
-### Viewing Statistics
-
-```
-"Show me my researcher statistics"
-"What's my acceptance rate on Intigriti?"
-"How many submissions have I made this year?"
+"What changed in the programs I follow since last week?"
+"Show me recent program activity on Intigriti"
+"What are the rules of engagement for the XYZ program?"
 ```
 
 ## 🛠️ Available Tools
@@ -142,9 +122,14 @@ Once configured with Claude Desktop, you can use natural language to interact wi
 
 Lists all bug bounty programs available to you as a researcher.
 
-**Parameters:** None
+**Parameters:**
+- `status_id` (number, optional) - Filter by program status id
+- `type_id` (number, optional) - Filter by program type id
+- `following` (boolean, optional) - Only programs you follow / don't follow
+- `limit` (number, optional) - Max results (max 500, default 50)
+- `offset` (number, optional) - Records to skip
 
-**Returns:** Array of programs with name, company, status, and reward information
+**Returns:** Paginated programs with id, handle, name, status, and bounty range
 
 **Example:**
 ```
@@ -156,13 +141,13 @@ List all available programs
 Gets detailed information about a specific program.
 
 **Parameters:**
-- `program_id` (string, required) - Program identifier
+- `program_id` (string, required) - Program UUID, or handle (`lansweeper1` / `lansweeper/lansweeper1`)
 
-**Returns:** Full program details including policy, rewards, response targets
+**Returns:** Full program details including latest domains (scope) and rules-of-engagement versions, bounty table, status
 
 **Example:**
 ```
-Get details about program abc123
+Get details about program lansweeper1
 ```
 
 ### 3. intigriti_get_program_scope
@@ -170,92 +155,46 @@ Get details about program abc123
 Retrieves the structured scope for a program.
 
 **Parameters:**
-- `program_id` (string, required) - Program identifier
+- `program_id` (string, required) - Program UUID or handle
+- `version_id` (string, optional) - Specific domains version UUID; omit for the latest version
 
 **Returns:** In-scope and out-of-scope assets
 
 **Example:**
 ```
-What's the scope for program xyz789?
+What's the scope for program lansweeper1?
 ```
 
-### 4. intigriti_list_submissions
+### 4. intigriti_get_program_roe
 
-Lists your bug submissions with optional filtering.
+Retrieves a program's rules of engagement.
 
 **Parameters:**
-- `program_id` (string, optional) - Filter by program
-- `status` (string, optional) - Filter by status: `open`, `closed`, `accepted`, `duplicate`, `na`, `informative`
-- `limit` (number, optional) - Max results (default: 50)
+- `program_id` (string, required) - Program UUID or handle
+- `version_id` (string, optional) - Specific ROE version UUID; omit for the latest version
 
-**Returns:** Array of submissions
+**Returns:** Policy text, testing requirements (intigriti.me, automated tooling, required headers/User-Agent), safe-harbour flag
 
 **Example:**
 ```
-Show me all my accepted submissions
-List open submissions for program abc123
+What are the rules of engagement for lansweeper1?
 ```
 
-### 5. intigriti_get_submission
+### 5. intigriti_list_program_activities
 
-Gets detailed information about a specific submission.
+Lists program change events (scope/ROE version changes, status changes, new programs).
 
 **Parameters:**
-- `submission_id` (string, required) - Submission UUID
+- `created_since` (number, optional) - Only activities after this unix epoch timestamp
+- `following` (boolean, optional) - Only activities for followed programs
+- `limit` (number, optional) - Max results (max 500, default 50)
+- `offset` (number, optional) - Records to skip
 
-**Returns:** Full submission details with communication history
-
-**Example:**
-```
-Get details about submission 12345-abcd-6789
-```
-
-### 6. intigriti_create_submission
-
-Submits a new bug report to a program.
-
-**Parameters:**
-- `program_id` (string, required) - Target program
-- `title` (string, required) - Brief vulnerability title
-- `description` (string, required) - Detailed description
-- `severity` (string, required) - `critical`, `high`, `medium`, `low`, `none`
-- `proof_of_concept` (string, required) - Reproduction steps
-- `endpoint` (string, required) - Affected URL/endpoint
-- `vulnerability_type` (string, optional) - Type of vulnerability
-
-**Returns:** Created submission details
+**Returns:** Paginated activity records with `fromVersionId`/`toVersionId` per activity
 
 **Example:**
 ```
-Create a new XSS submission for program xyz with title "Reflected XSS in search parameter"
-```
-
-### 7. intigriti_add_submission_comment
-
-Adds a comment to an existing submission.
-
-**Parameters:**
-- `submission_id` (string, required) - Submission UUID
-- `comment` (string, required) - Comment text
-
-**Returns:** Updated submission
-
-**Example:**
-```
-Add comment "Additional proof of concept attached" to submission 12345
-```
-
-### 8. intigriti_get_researcher_stats
-
-Retrieves your researcher statistics.
-
-**Parameters:** None
-
-**Returns:** Stats including total submissions, acceptance rate, reputation, earnings
-
-**Example:**
-```
-Show me my researcher statistics
+Show program activities from the last 7 days
 ```
 
 ## 🔒 Security Best Practices
